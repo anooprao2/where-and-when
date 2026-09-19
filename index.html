@@ -17,6 +17,7 @@
     --text-dim: #5b6478;
     --accent: #c9791e;
     --accent-2: #2f5fd6;
+    --positive: #1a8a4c;
     --border: #d7dce6;
     --shadow: 0 30px 80px -40px rgba(20,30,60,0.35);
   }
@@ -30,6 +31,7 @@
       --text-dim: #8b93a8;
       --accent: #f0a83e;
       --accent-2: #6f96ff;
+      --positive: #3ddc84;
       --border: #262e42;
       --shadow: 0 30px 80px -30px rgba(0,0,0,0.6);
     }
@@ -43,6 +45,7 @@
     --text-dim: #8b93a8;
     --accent: #f0a83e;
     --accent-2: #6f96ff;
+    --positive: #3ddc84;
     --border: #262e42;
     --shadow: 0 30px 80px -30px rgba(0,0,0,0.6);
   }
@@ -359,6 +362,56 @@
     letter-spacing: 0.06em;
   }
 
+  .panel-wide{ grid-column: 1 / -1; }
+
+  .movers-list{
+    display: flex;
+    flex-direction: column;
+  }
+  .mover-row{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .mover-row:last-child{ border-bottom: none; padding-bottom: 0; }
+  .mover-row:first-child{ padding-top: 0; }
+  .mover-rank{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    width: 20px;
+    flex-shrink: 0;
+  }
+  .mover-id{
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+  .mover-ticker{
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .mover-price{
+    font-size: 12px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .mover-change{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--positive);
+    background: color-mix(in srgb, var(--positive) 16%, transparent);
+    padding: 4px 10px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
   [hidden]{ display: none !important; }
 
   @media (max-width: 640px){
@@ -476,6 +529,19 @@
         <div class="headlines" id="newsContent" hidden></div>
         <div id="newsEmpty" class="panel-note" hidden>Couldn't load headlines for this region right now.</div>
       </div>
+
+      <div class="panel-card panel-wide" id="moversCard">
+        <span class="panel-title">Top gainers today</span>
+        <div id="moversLoading" class="skeleton">
+          <div class="skel-block" style="width:100%; height:16px; margin-bottom:14px;"></div>
+          <div class="skel-block" style="width:100%; height:16px; margin-bottom:14px;"></div>
+          <div class="skel-block" style="width:100%; height:16px; margin-bottom:14px;"></div>
+          <div class="skel-block" style="width:100%; height:16px;"></div>
+        </div>
+        <div class="movers-list" id="moversContent" hidden></div>
+        <div id="moversEmpty" class="panel-note" hidden>Couldn't load market data right now.</div>
+        <div class="panel-note" id="moversNote" style="margin-top:14px;" hidden></div>
+      </div>
     </div>
   </main>
 
@@ -509,7 +575,11 @@
     weatherWind: document.getElementById('weatherWind'),
     newsLoading: document.getElementById('newsLoading'),
     newsContent: document.getElementById('newsContent'),
-    newsEmpty: document.getElementById('newsEmpty')
+    newsEmpty: document.getElementById('newsEmpty'),
+    moversLoading: document.getElementById('moversLoading'),
+    moversContent: document.getElementById('moversContent'),
+    moversEmpty: document.getElementById('moversEmpty'),
+    moversNote: document.getElementById('moversNote')
   };
 
   var WEATHER_CODES = {
@@ -724,6 +794,70 @@
       });
   }
 
+  function fetchTopGainers(){
+    els.moversEmpty.hidden = true;
+    els.moversNote.hidden = true;
+    els.moversContent.hidden = true;
+    els.moversContent.innerHTML = '';
+    els.moversLoading.hidden = false;
+
+    var url = 'https://www.alphavantage.co/query?function=TOP_GAINERS_LOSERS&apikey=demo';
+
+    fetchWithTimeout(url, 8000)
+      .then(function(res){ if(!res.ok) throw new Error('movers status ' + res.status); return res.json(); })
+      .then(function(data){
+        var gainers = data.top_gainers;
+        if(!gainers || gainers.length === 0) throw new Error('no gainers');
+
+        gainers.slice(0, 10).forEach(function(g, idx){
+          var price = parseFloat(g.price);
+          var pct = parseFloat(g.change_percentage);
+
+          var row = document.createElement('div');
+          row.className = 'mover-row';
+
+          var rank = document.createElement('span');
+          rank.className = 'mover-rank';
+          rank.textContent = String(idx + 1).padStart(2, '0');
+
+          var idBlock = document.createElement('div');
+          idBlock.className = 'mover-id';
+
+          var ticker = document.createElement('div');
+          ticker.className = 'mover-ticker';
+          ticker.textContent = g.ticker;
+
+          var priceEl = document.createElement('div');
+          priceEl.className = 'mover-price';
+          priceEl.textContent = '$' + (isNaN(price) ? g.price : price.toFixed(2));
+
+          idBlock.appendChild(ticker);
+          idBlock.appendChild(priceEl);
+
+          var change = document.createElement('span');
+          change.className = 'mover-change';
+          change.textContent = '+' + (isNaN(pct) ? g.change_percentage : pct.toFixed(2) + '%');
+
+          row.appendChild(rank);
+          row.appendChild(idBlock);
+          row.appendChild(change);
+          els.moversContent.appendChild(row);
+        });
+
+        els.moversLoading.hidden = true;
+        els.moversContent.hidden = false;
+        if(data.last_updated){
+          els.moversNote.textContent = 'As of ' + data.last_updated + ' · US markets · Source: Alpha Vantage';
+          els.moversNote.hidden = false;
+        }
+      })
+      .catch(function(){
+        els.moversLoading.hidden = true;
+        els.moversEmpty.textContent = 'Couldn’t load market data right now.';
+        els.moversEmpty.hidden = false;
+      });
+  }
+
   function fallbackToDeviceTime(reason){
     var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     els.flag.textContent = '🧭';
@@ -762,6 +896,8 @@
     hideError();
     els.sourceNote.textContent = 'Looking up your location…';
     els.refreshBtn.classList.add('spinning');
+
+    fetchTopGainers();
 
     fetchWithTimeout('https://ipapi.co/json/', 6000)
       .then(function(res){ if(!res.ok) throw new Error('ipapi status ' + res.status); return res.json(); })
