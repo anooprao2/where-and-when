@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Where & When</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --bg: #eef1f6;
+    --surface: #ffffff;
+    --surface-2: #e3e8f0;
+    --text: #12151f;
+    --text-dim: #5b6478;
+    --accent: #c9791e;
+    --accent-2: #2f5fd6;
+    --border: #d7dce6;
+    --shadow: 0 30px 80px -40px rgba(20,30,60,0.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg: #0a0d15;
+      --surface: #131826;
+      --surface-2: #1b2233;
+      --text: #eef1f8;
+      --text-dim: #8b93a8;
+      --accent: #f0a83e;
+      --accent-2: #6f96ff;
+      --border: #262e42;
+      --shadow: 0 30px 80px -30px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg: #0a0d15;
+    --surface: #131826;
+    --surface-2: #1b2233;
+    --text: #eef1f8;
+    --text-dim: #8b93a8;
+    --accent: #f0a83e;
+    --accent-2: #6f96ff;
+    --border: #262e42;
+    --shadow: 0 30px 80px -30px rgba(0,0,0,0.6);
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+  html, body{ height: 100%; }
+
+  /* decorative globe graticule */
+  .globe-field{
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .globe-field svg{
+    width: min(140vw, 1400px);
+    height: auto;
+    opacity: 0.35;
+    animation: spin 90s linear infinite;
+    transform-origin: 500px 500px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .globe-field svg{ animation: none; }
+  }
+  @keyframes spin{
+    from{ transform: rotate(0deg); }
+    to{ transform: rotate(360deg); }
+  }
+  .globe-field ellipse{
+    fill: none;
+    stroke: var(--accent-2);
+    stroke-width: 1;
+  }
+  .globe-field circle.outer{
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 1.5;
+  }
+  .globe-field .dot{
+    fill: var(--accent);
+  }
+
+  main{
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .eyebrow{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+  }
+  .eyebrow .pulse{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+    animation: pulse 2.2s ease-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .eyebrow .pulse{ animation: none; }
+  }
+  @keyframes pulse{
+    0%{ box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+    70%{ box-shadow: 0 0 0 9px color-mix(in srgb, var(--accent) 0%, transparent); }
+    100%{ box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+  }
+
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 36px 32px;
+    box-shadow: var(--shadow);
+  }
+
+  .place-row{
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .flag{
+    font-size: 40px;
+    line-height: 1;
+  }
+  .country{
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(28px, 6vw, 38px);
+    text-wrap: balance;
+  }
+  .city{
+    color: var(--text-dim);
+    font-size: 16px;
+    margin: 2px 0 26px;
+  }
+
+  .clock{
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    font-size: clamp(48px, 12vw, 78px);
+    letter-spacing: 0.01em;
+    color: var(--text);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .clock .ampm{
+    font-size: 0.28em;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .date-line{
+    font-size: 15px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    margin-bottom: 28px;
+  }
+
+  .chips{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .chip{
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .chip .label{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .chip .value{
+    font-size: 14px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .footer-row{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .note{
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  button.refresh{
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  button.refresh:hover{ border-color: var(--accent-2); }
+  button.refresh:focus-visible{ outline: 2px solid var(--accent-2); outline-offset: 2px; }
+  button.refresh svg{ width: 14px; height: 14px; }
+  button.refresh.spinning svg{ animation: spin 0.8s linear infinite; }
+
+  /* loading state */
+  .skeleton{
+    color: var(--text-dim);
+    font-size: 15px;
+  }
+  .skel-block{
+    background: linear-gradient(90deg, var(--surface-2), var(--border), var(--surface-2));
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: 8px;
+  }
+  @media (prefers-reduced-motion: reduce){ .skel-block{ animation: none; } }
+  @keyframes shimmer{
+    0%{ background-position: 200% 0; }
+    100%{ background-position: -200% 0; }
+  }
+
+  .error-box{
+    display: none;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+  .error-box strong{ color: var(--text); }
+
+  [hidden]{ display: none !important; }
+
+  @media (max-width: 420px){
+    .card{ padding: 26px 20px; }
+    .chips{ grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="globe-field" aria-hidden="true">
+    <svg viewBox="0 0 1000 1000">
+      <circle class="outer" cx="500" cy="500" r="380"></circle>
+      <ellipse cx="500" cy="500" rx="380" ry="120"></ellipse>
+      <ellipse cx="500" cy="500" rx="380" ry="240"></ellipse>
+      <ellipse cx="500" cy="500" rx="120" ry="380"></ellipse>
+      <ellipse cx="500" cy="500" rx="240" ry="380"></ellipse>
+      <line x1="120" y1="500" x2="880" y2="500" stroke="var(--border)" stroke-width="1"></line>
+      <line x1="500" y1="120" x2="500" y2="880" stroke="var(--border)" stroke-width="1"></line>
+      <circle class="dot" cx="500" cy="500" r="5"></circle>
+    </svg>
+  </div>
+
+  <main>
+    <div class="eyebrow"><span class="pulse"></span> Live location &amp; local time</div>
+
+    <div class="error-box" id="errorBox">
+      <strong>Couldn't detect your location.</strong>
+      <span id="errorDetail"> Showing your device's local time zone instead.</span>
+    </div>
+
+    <div class="card">
+      <div id="loadingState" class="skeleton">
+        <div class="skel-block" style="width:70%; height:32px; margin-bottom:10px;"></div>
+        <div class="skel-block" style="width:40%; height:16px; margin-bottom:28px;"></div>
+        <div class="skel-block" style="width:90%; height:64px; margin-bottom:24px;"></div>
+        <div class="skel-block" style="width:100%; height:16px;"></div>
+      </div>
+
+      <div id="contentState" hidden>
+        <div class="place-row">
+          <span class="flag" id="flag">🌍</span>
+          <span class="country" id="country">—</span>
+        </div>
+        <div class="city" id="city">—</div>
+
+        <div class="clock" id="clock">--:--:-- <span class="ampm" id="ampm"></span></div>
+        <div class="date-line" id="dateLine">—</div>
+
+        <div class="chips">
+          <div class="chip">
+            <div class="label">Time zone</div>
+            <div class="value" id="tz">—</div>
+          </div>
+          <div class="chip">
+            <div class="label">UTC offset</div>
+            <div class="value" id="offset">—</div>
+          </div>
+          <div class="chip">
+            <div class="label">Coordinates</div>
+            <div class="value" id="coords">—</div>
+          </div>
+          <div class="chip">
+            <div class="label">IP address</div>
+            <div class="value" id="ip">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-row">
+        <span class="note" id="sourceNote">Looking up your location…</span>
+        <button class="refresh" id="refreshBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+  </main>
+
+<script>
+(function(){
+  var els = {
+    loading: document.getElementById('loadingState'),
+    content: document.getElementById('contentState'),
+    errorBox: document.getElementById('errorBox'),
+    errorDetail: document.getElementById('errorDetail'),
+    flag: document.getElementById('flag'),
+    country: document.getElementById('country'),
+    city: document.getElementById('city'),
+    clock: document.getElementById('clock'),
+    ampm: document.getElementById('ampm'),
+    dateLine: document.getElementById('dateLine'),
+    tz: document.getElementById('tz'),
+    offset: document.getElementById('offset'),
+    coords: document.getElementById('coords'),
+    ip: document.getElementById('ip'),
+    sourceNote: document.getElementById('sourceNote'),
+    refreshBtn: document.getElementById('refreshBtn')
+  };
+
+  var tickTimer = null;
+  var currentTimeZone = null;
+
+  function flagFromCountryCode(code){
+    if(!code || code.length !== 2) return '🌍';
+    var chars = code.toUpperCase().split('').map(function(c){
+      return 127397 + c.charCodeAt(0);
+    });
+    try{ return String.fromCodePoint.apply(null, chars); } catch(e){ return '🌍'; }
+  }
+
+  function formatOffset(timeZone){
+    try{
+      var parts = new Intl.DateTimeFormat('en-US', { timeZone: timeZone, timeZoneName: 'shortOffset' }).formatToParts(new Date());
+      var tzPart = parts.find(function(p){ return p.type === 'timeZoneName'; });
+      return tzPart ? tzPart.value.replace('GMT', 'UTC') : '—';
+    }catch(e){ return '—'; }
+  }
+
+  function renderClock(){
+    if(!currentTimeZone) return;
+    var now = new Date();
+    try{
+      var timeParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: currentTimeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+      }).formatToParts(now);
+      var map = {};
+      timeParts.forEach(function(p){ map[p.type] = p.value; });
+      els.clock.childNodes[0].textContent = map.hour + ':' + map.minute + ':' + map.second + ' ';
+      els.ampm.textContent = (map.dayPeriod || '').toUpperCase();
+
+      els.dateLine.textContent = new Intl.DateTimeFormat('en-US', {
+        timeZone: currentTimeZone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      }).format(now);
+    }catch(e){
+      els.clock.childNodes[0].textContent = now.toLocaleTimeString() + ' ';
+      els.ampm.textContent = '';
+    }
+  }
+
+  function startClock(timeZone){
+    currentTimeZone = timeZone;
+    if(tickTimer) clearInterval(tickTimer);
+    renderClock();
+    tickTimer = setInterval(renderClock, 1000);
+  }
+
+  function showError(message){
+    els.errorBox.style.display = 'block';
+    els.errorDetail.textContent = ' ' + message;
+  }
+
+  function hideError(){
+    els.errorBox.style.display = 'none';
+  }
+
+  function normalize(source, data){
+    if(source === 'ipapi'){
+      return {
+        country: data.country_name,
+        countryCode: data.country_code,
+        city: data.city,
+        region: data.region,
+        timeZone: data.timezone,
+        ip: data.ip,
+        lat: data.latitude,
+        lon: data.longitude
+      };
+    }
+    if(source === 'ipwho'){
+      return {
+        country: data.country,
+        countryCode: data.country_code,
+        city: data.city,
+        region: data.region,
+        timeZone: data.timezone && data.timezone.id,
+        ip: data.ip,
+        lat: data.latitude,
+        lon: data.longitude
+      };
+    }
+    return null;
+  }
+
+  function renderLocation(info){
+    els.flag.textContent = flagFromCountryCode(info.countryCode);
+    els.country.textContent = info.country || 'Unknown location';
+    els.city.textContent = [info.city, info.region].filter(Boolean).join(', ') || '—';
+    els.tz.textContent = info.timeZone || '—';
+    els.offset.textContent = info.timeZone ? formatOffset(info.timeZone) : '—';
+    els.coords.textContent = (typeof info.lat === 'number' && typeof info.lon === 'number')
+      ? info.lat.toFixed(2) + '°, ' + info.lon.toFixed(2) + '°'
+      : '—';
+    els.ip.textContent = info.ip || '—';
+
+    els.loading.hidden = true;
+    els.content.hidden = false;
+
+    startClock(info.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }
+
+  function fallbackToDeviceTime(reason){
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    els.flag.textContent = '🧭';
+    els.country.textContent = 'Location unavailable';
+    els.city.textContent = 'Showing your device’s time zone';
+    els.tz.textContent = tz;
+    els.offset.textContent = formatOffset(tz);
+    els.coords.textContent = '—';
+    els.ip.textContent = '—';
+
+    els.loading.hidden = true;
+    els.content.hidden = false;
+    showError(reason);
+    els.sourceNote.textContent = 'Source: device time zone';
+
+    startClock(tz);
+  }
+
+  function fetchWithTimeout(url, ms){
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, ms);
+    return fetch(url, { signal: controller.signal }).finally(function(){ clearTimeout(timer); });
+  }
+
+  function locate(){
+    els.loading.hidden = false;
+    els.content.hidden = true;
+    hideError();
+    els.sourceNote.textContent = 'Looking up your location…';
+    els.refreshBtn.classList.add('spinning');
+
+    fetchWithTimeout('https://ipapi.co/json/', 6000)
+      .then(function(res){ if(!res.ok) throw new Error('ipapi status ' + res.status); return res.json(); })
+      .then(function(data){
+        if(data.error) throw new Error(data.reason || 'ipapi error');
+        var info = normalize('ipapi', data);
+        els.sourceNote.textContent = 'Source: ipapi.co';
+        renderLocation(info);
+      })
+      .catch(function(){
+        return fetchWithTimeout('https://ipwho.is/', 6000)
+          .then(function(res){ if(!res.ok) throw new Error('ipwho status ' + res.status); return res.json(); })
+          .then(function(data){
+            if(!data.success) throw new Error(data.message || 'ipwho error');
+            var info = normalize('ipwho', data);
+            els.sourceNote.textContent = 'Source: ipwho.is';
+            renderLocation(info);
+          });
+      })
+      .catch(function(){
+        fallbackToDeviceTime('Location services are unreachable right now (blocked network or offline). Showing your device’s local time zone instead.');
+      })
+      .finally(function(){
+        els.refreshBtn.classList.remove('spinning');
+      });
+  }
+
+  els.refreshBtn.addEventListener('click', locate);
+
+  locate();
+})();
+</script>
+
+</body>
+</html>
