@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "where-and-when-site",
+      "runtimeExecutable": "ruby",
+      "runtimeArgs": ["-rwebrick", "-e", "WEBrick::HTTPServer.new(:Port => 8743, :DocumentRoot => Dir.pwd).start"],
+      "port": 8743
+    }
+  ]
+}

@@ -276,11 +276,99 @@
   }
   .error-box strong{ color: var(--text); }
 
+  .panels{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .panel-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 26px 24px;
+    box-shadow: var(--shadow);
+    min-height: 100%;
+  }
+  .panel-title{
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: block;
+  }
+  .panel-note{
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .weather-main{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .weather-icon{ font-size: 42px; line-height: 1; }
+  .weather-temp{
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: 38px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .weather-desc{
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .weather-chips{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .weather-chips .chip{ padding: 10px; }
+  .weather-chips .value{ font-size: 13px; }
+
+  .headlines{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .headline{
+    display: block;
+    color: var(--text);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+  }
+  .headline:last-child{ border-bottom: none; padding-bottom: 0; }
+  .headline:hover .headline-title, .headline:focus-visible .headline-title{ color: var(--accent-2); }
+  .headline-title{
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-wrap: balance;
+  }
+  .headline-source{
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
   [hidden]{ display: none !important; }
+
+  @media (max-width: 640px){
+    .panels{ grid-template-columns: 1fr; }
+  }
 
   @media (max-width: 420px){
     .card{ padding: 26px 20px; }
     .chips{ grid-template-columns: 1fr 1fr; }
+    .panel-card{ padding: 22px 18px; }
   }
 </style>
 </head>
@@ -353,6 +441,42 @@
         </button>
       </div>
     </div>
+
+    <div class="panels">
+      <div class="panel-card" id="weatherCard">
+        <span class="panel-title">Weather</span>
+        <div id="weatherLoading" class="skeleton">
+          <div class="skel-block" style="width:60%; height:40px; margin-bottom:14px;"></div>
+          <div class="skel-block" style="width:100%; height:40px;"></div>
+        </div>
+        <div id="weatherContent" hidden>
+          <div class="weather-main">
+            <span class="weather-icon" id="weatherIcon">☀️</span>
+            <div>
+              <div class="weather-temp" id="weatherTemp">—°</div>
+              <div class="weather-desc" id="weatherDesc">—</div>
+            </div>
+          </div>
+          <div class="weather-chips">
+            <div class="chip"><div class="label">Feels like</div><div class="value" id="weatherFeels">—</div></div>
+            <div class="chip"><div class="label">Humidity</div><div class="value" id="weatherHumidity">—</div></div>
+            <div class="chip"><div class="label">Wind</div><div class="value" id="weatherWind">—</div></div>
+          </div>
+        </div>
+        <div id="weatherEmpty" class="panel-note" hidden>Weather needs a detected location.</div>
+      </div>
+
+      <div class="panel-card" id="newsCard">
+        <span class="panel-title">Top headlines</span>
+        <div id="newsLoading" class="skeleton">
+          <div class="skel-block" style="width:100%; height:16px; margin-bottom:16px;"></div>
+          <div class="skel-block" style="width:90%; height:16px; margin-bottom:16px;"></div>
+          <div class="skel-block" style="width:95%; height:16px;"></div>
+        </div>
+        <div class="headlines" id="newsContent" hidden></div>
+        <div id="newsEmpty" class="panel-note" hidden>Couldn't load headlines for this region right now.</div>
+      </div>
+    </div>
   </main>
 
 <script>
@@ -373,7 +497,32 @@
     coords: document.getElementById('coords'),
     ip: document.getElementById('ip'),
     sourceNote: document.getElementById('sourceNote'),
-    refreshBtn: document.getElementById('refreshBtn')
+    refreshBtn: document.getElementById('refreshBtn'),
+    weatherLoading: document.getElementById('weatherLoading'),
+    weatherContent: document.getElementById('weatherContent'),
+    weatherEmpty: document.getElementById('weatherEmpty'),
+    weatherIcon: document.getElementById('weatherIcon'),
+    weatherTemp: document.getElementById('weatherTemp'),
+    weatherDesc: document.getElementById('weatherDesc'),
+    weatherFeels: document.getElementById('weatherFeels'),
+    weatherHumidity: document.getElementById('weatherHumidity'),
+    weatherWind: document.getElementById('weatherWind'),
+    newsLoading: document.getElementById('newsLoading'),
+    newsContent: document.getElementById('newsContent'),
+    newsEmpty: document.getElementById('newsEmpty')
+  };
+
+  var WEATHER_CODES = {
+    0: ['☀️', 'Clear sky'], 1: ['🌤️', 'Mainly clear'], 2: ['⛅', 'Partly cloudy'], 3: ['☁️', 'Overcast'],
+    45: ['🌫️', 'Fog'], 48: ['🌫️', 'Rime fog'],
+    51: ['🌦️', 'Light drizzle'], 53: ['🌦️', 'Drizzle'], 55: ['🌧️', 'Dense drizzle'],
+    56: ['🌧️', 'Freezing drizzle'], 57: ['🌧️', 'Freezing drizzle'],
+    61: ['🌧️', 'Slight rain'], 63: ['🌧️', 'Rain'], 65: ['🌧️', 'Heavy rain'],
+    66: ['🌧️', 'Freezing rain'], 67: ['🌧️', 'Freezing rain'],
+    71: ['🌨️', 'Slight snow'], 73: ['🌨️', 'Snow'], 75: ['🌨️', 'Heavy snow'], 77: ['🌨️', 'Snow grains'],
+    80: ['🌦️', 'Rain showers'], 81: ['🌦️', 'Rain showers'], 82: ['⛈️', 'Violent rain showers'],
+    85: ['🌨️', 'Snow showers'], 86: ['🌨️', 'Snow showers'],
+    95: ['⛈️', 'Thunderstorm'], 96: ['⛈️', 'Thunderstorm, hail'], 99: ['⛈️', 'Thunderstorm, hail']
   };
 
   var tickTimer = null;
@@ -475,6 +624,104 @@
     els.content.hidden = false;
 
     startClock(info.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+    fetchWeather(info.lat, info.lon, info.countryCode);
+    fetchNews(info.countryCode);
+  }
+
+  function fetchWeather(lat, lon, countryCode){
+    if(typeof lat !== 'number' || typeof lon !== 'number'){
+      els.weatherLoading.hidden = true;
+      els.weatherContent.hidden = true;
+      els.weatherEmpty.textContent = 'Weather needs a detected location.';
+      els.weatherEmpty.hidden = false;
+      return;
+    }
+
+    els.weatherEmpty.hidden = true;
+    els.weatherContent.hidden = true;
+    els.weatherLoading.hidden = false;
+
+    var imperial = countryCode === 'US';
+    var tempUnit = imperial ? 'fahrenheit' : 'celsius';
+    var windUnit = imperial ? 'mph' : 'kmh';
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m' +
+      '&temperature_unit=' + tempUnit + '&wind_speed_unit=' + windUnit;
+
+    fetchWithTimeout(url, 6000)
+      .then(function(res){ if(!res.ok) throw new Error('weather status ' + res.status); return res.json(); })
+      .then(function(data){
+        var c = data.current;
+        var info = WEATHER_CODES[c.weather_code] || ['🌡️', 'Unknown'];
+        var unitLabel = imperial ? '°F' : '°C';
+        els.weatherIcon.textContent = info[0];
+        els.weatherTemp.textContent = Math.round(c.temperature_2m) + unitLabel;
+        els.weatherDesc.textContent = info[1];
+        els.weatherFeels.textContent = Math.round(c.apparent_temperature) + unitLabel;
+        els.weatherHumidity.textContent = c.relative_humidity_2m + '%';
+        els.weatherWind.textContent = Math.round(c.wind_speed_10m) + ' ' + (imperial ? 'mph' : 'km/h');
+        els.weatherLoading.hidden = true;
+        els.weatherContent.hidden = false;
+      })
+      .catch(function(){
+        els.weatherLoading.hidden = true;
+        els.weatherEmpty.textContent = 'Couldn’t load weather right now.';
+        els.weatherEmpty.hidden = false;
+      });
+  }
+
+  function fetchNews(countryCode){
+    els.newsEmpty.hidden = true;
+    els.newsContent.hidden = true;
+    els.newsContent.innerHTML = '';
+    els.newsLoading.hidden = false;
+
+    var cc = (countryCode || 'US').toUpperCase();
+    var rssUrl = 'https://news.google.com/rss?hl=en-' + cc + '&gl=' + cc + '&ceid=' + cc + ':en';
+    var apiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl);
+
+    fetchWithTimeout(apiUrl, 8000)
+      .then(function(res){ if(!res.ok) throw new Error('news status ' + res.status); return res.json(); })
+      .then(function(data){
+        if(data.status !== 'ok' || !data.items || data.items.length === 0) throw new Error('no items');
+        var items = data.items.slice(0, 3);
+
+        items.forEach(function(item){
+          var rawTitle = item.title || 'Untitled';
+          var splitAt = rawTitle.lastIndexOf(' - ');
+          var title = splitAt > -1 ? rawTitle.slice(0, splitAt) : rawTitle;
+          var source = splitAt > -1 ? rawTitle.slice(splitAt + 3) : '';
+
+          var a = document.createElement('a');
+          a.className = 'headline';
+          a.href = item.link || '#';
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+
+          var t = document.createElement('div');
+          t.className = 'headline-title';
+          t.textContent = title;
+          a.appendChild(t);
+
+          if(source){
+            var s = document.createElement('div');
+            s.className = 'headline-source';
+            s.textContent = source;
+            a.appendChild(s);
+          }
+
+          els.newsContent.appendChild(a);
+        });
+
+        els.newsLoading.hidden = true;
+        els.newsContent.hidden = false;
+      })
+      .catch(function(){
+        els.newsLoading.hidden = true;
+        els.newsEmpty.textContent = 'Couldn’t load headlines for this region right now.';
+        els.newsEmpty.hidden = false;
+      });
   }
 
   function fallbackToDeviceTime(reason){
@@ -493,6 +740,14 @@
     els.sourceNote.textContent = 'Source: device time zone';
 
     startClock(tz);
+
+    els.weatherLoading.hidden = true;
+    els.weatherEmpty.textContent = 'Weather needs a detected location.';
+    els.weatherEmpty.hidden = false;
+
+    els.newsLoading.hidden = true;
+    els.newsEmpty.textContent = 'Headlines need a detected location.';
+    els.newsEmpty.hidden = false;
   }
 
   function fetchWithTimeout(url, ms){
